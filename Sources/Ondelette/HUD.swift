@@ -7,7 +7,8 @@ enum HUDState: Equatable {
     case recording
     case recordingLocked
     case transcribing
-    case correcting
+    /// Correction en cours, avec le contexte détecté (« e-mail », « code »…).
+    case correcting(String?)
     case done
     case error(String)
 }
@@ -166,7 +167,8 @@ struct HUDView: View {
         case .recording: return "Je t'écoute…"
         case .recordingLocked: return "Dictée verrouillée — appuie pour finir"
         case .transcribing: return "Transcription…"
-        case .correcting: return "Correction GPT…"
+        case .correcting(let context):
+            return context.map { "Correction \($0)…" } ?? "Correction…"
         case .done: return "Collé ✓"
         case .error(let message): return message
         }

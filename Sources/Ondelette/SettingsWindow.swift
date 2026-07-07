@@ -7,6 +7,7 @@ import ServiceManagement
 enum MainPane: String, CaseIterable, Identifiable {
     case home
     case history
+    case modes
     case dictionary
     case settings
 
@@ -16,6 +17,7 @@ enum MainPane: String, CaseIterable, Identifiable {
         switch self {
         case .home: return "Accueil"
         case .history: return "Historique"
+        case .modes: return "Modes"
         case .dictionary: return "Dictionnaire"
         case .settings: return "Réglages"
         }
@@ -25,6 +27,7 @@ enum MainPane: String, CaseIterable, Identifiable {
         switch self {
         case .home: return "waveform"
         case .history: return "clock.arrow.circlepath"
+        case .modes: return "wand.and.rays"
         case .dictionary: return "character.book.closed.fill"
         case .settings: return "gearshape.fill"
         }
@@ -93,8 +96,8 @@ struct MainView: View {
                 }
                 .padding(.leading, 16)
                 .padding(.trailing, 12)
-                .padding(.top, 44)
-                .padding(.bottom, 18)
+                .padding(.top, 26)
+                .padding(.bottom, 14)
             }
             .safeAreaInset(edge: .bottom) {
                 Text("Version 1.0 · 100 % local")
@@ -107,6 +110,7 @@ struct MainView: View {
             switch nav.pane ?? .home {
             case .home: HomePane()
             case .history: HistoryPane()
+            case .modes: ModesPane()
             case .dictionary: DictionaryPane()
             case .settings: SettingsPane()
             }
@@ -129,12 +133,30 @@ struct HomePane: View {
                         .font(.largeTitle.weight(.semibold))
                     Text("Maintiens \(settings.hotkey.label) et parle — le texte corrigé est collé dans l'app active.")
                         .foregroundStyle(.secondary)
+                    if history.speedMultiplier >= 1.5 {
+                        Text("Tu dictes \(history.speedMultiplier, specifier: "%.1f")× plus vite que tu ne tapes.")
+                            .font(.callout.weight(.medium))
+                            .foregroundStyle(Color.accentColor)
+                            .padding(.top, 2)
+                    }
                 }
 
                 HStack(spacing: 12) {
                     StatTile(value: "\(history.todayWords)", label: "mots aujourd'hui")
                     StatTile(value: "\(history.totalWords)", label: "mots au total")
                     StatTile(value: "\(history.totalCount)", label: "dictées")
+                }
+
+                HStack(spacing: 12) {
+                    StatTile(
+                        value: history.wordsPerMinute > 0 ? "\(history.wordsPerMinute)" : "—",
+                        label: "mots / minute"
+                    )
+                    StatTile(value: Self.timeSavedText(history.timeSavedSeconds), label: "temps gagné")
+                    StatTile(
+                        value: history.streakDays > 0 ? "🔥 \(history.streakDays)" : "—",
+                        label: history.streakDays > 1 ? "jours d'affilée" : "jour actif"
+                    )
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
@@ -153,6 +175,14 @@ struct HomePane: View {
             .frame(maxWidth: 560, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private static func timeSavedText(_ seconds: TimeInterval) -> String {
+        guard seconds >= 60 else { return seconds > 0 ? "< 1 min" : "—" }
+        let minutes = Int(seconds / 60)
+        if minutes < 60 { return "\(minutes) min" }
+        return "\(minutes / 60) h \(minutes % 60 > 0 ? "\(minutes % 60) min" : "")"
+            .trimmingCharacters(in: .whitespaces)
     }
 }
 
@@ -201,13 +231,21 @@ struct HistoryPane: View {
     @ObservedObject private var history = HistoryStore.shared
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 0) {
+            PaneHeader(title: "Historique") {
+                if !history.entries.isEmpty {
+                    Button("Tout effacer", role: .destructive) {
+                        history.clear()
+                    }
+                }
+            }
             if history.entries.isEmpty {
                 ContentUnavailableView(
                     "Aucune dictée pour l'instant",
                     systemImage: "waveform",
                     description: Text("Tes dictées apparaîtront ici — pratique pour recopier un texte collé au mauvais endroit.")
                 )
+                .frame(maxHeight: .infinity)
             } else {
                 List {
                     ForEach(history.entries) { entry in
@@ -217,14 +255,30 @@ struct HistoryPane: View {
                 .listStyle(.inset)
             }
         }
-        .navigationTitle("Historique")
-        .toolbar {
-            if !history.entries.isEmpty {
-                Button("Tout effacer", role: .destructive) {
-                    history.clear()
-                }
-            }
+    }
+}
+
+/// En-tête de panneau uniforme : même hauteur et même alignement partout.
+struct PaneHeader<Trailing: View>: View {
+    let title: String
+    @ViewBuilder var trailing: Trailing
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+                .font(.largeTitle.weight(.semibold))
+            Spacer()
+            trailing
         }
+        .padding(.horizontal, 28)
+        .padding(.top, 28)
+        .padding(.bottom, 12)
+    }
+}
+
+extension PaneHeader where Trailing == EmptyView {
+    init(title: String) {
+        self.init(title: title) { EmptyView() }
     }
 }
 
@@ -240,6 +294,11 @@ struct HistoryRow: View {
                 Text(entry.date.formatted(.relative(presentation: .named)))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                if let app = entry.app {
+                    Text("→ \(app)")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
                 Spacer()
                 Button {
                     NSPasteboard.general.clearContents()
@@ -269,21 +328,95 @@ struct HistoryRow: View {
     }
 }
 
+// MARK: - Modes contextuels
+
+struct ModesPane: View {
+    @ObservedObject private var settings = AppSettings.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            PaneHeader(title: "Modes")
+            Form {
+                Section {
+                    Toggle(isOn: $settings.adaptToApp) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Adapter la correction à l'app active")
+                                .fontWeight(.medium)
+                            Text("Ondelette détecte l'app qui recevra le texte et ajuste le style. Le HUD affiche le mode utilisé (« Correction prompt… »).")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                Section("Modes") {
+                    ForEach(AppContext.configurable, id: \.self) { context in
+                        ModeRow(context: context)
+                            .disabled(!settings.adaptToApp)
+                    }
+                    ModeRow(context: .standard)
+                        .disabled(true)
+                }
+            }
+            .formStyle(.grouped)
+        }
+    }
+}
+
+struct ModeRow: View {
+    let context: AppContext
+    @ObservedObject private var settings = AppSettings.shared
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: context.symbol)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 24, height: 24)
+                .background(RoundedRectangle(cornerRadius: 6.5).fill(context.color.gradient))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(context.displayName)
+                    .fontWeight(.medium)
+                Text(context.summary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(context.appExamples)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            Spacer()
+            if context != .standard {
+                Toggle("", isOn: Binding(
+                    get: { !settings.disabledContexts.contains(context.rawValue) },
+                    set: { settings.setContext(context, enabled: $0) }
+                ))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.small)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
 // MARK: - Dictionnaire
 
 struct DictionaryPane: View {
     var body: some View {
-        Form {
-            Section {
-                VocabularyEditor()
-            } footer: {
-                Text("Ces graphies exactes sont transmises à la correction : quand un mot dicté leur ressemble, c'est la forme du dictionnaire qui est écrite.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 0) {
+            PaneHeader(title: "Dictionnaire")
+            Form {
+                Section {
+                    VocabularyEditor()
+                } footer: {
+                    Text("Ces graphies exactes sont transmises à la correction : quand un mot dicté leur ressemble, c'est la forme du dictionnaire qui est écrite.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
+            .formStyle(.grouped)
         }
-        .formStyle(.grouped)
-        .navigationTitle("Dictionnaire")
     }
 }
 
@@ -342,6 +475,14 @@ struct SettingsPane: View {
     private let knownModels = ["gpt-5.4-mini", "gpt-5.5", "gpt-5.2", "gpt-5-mini"]
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            PaneHeader(title: "Réglages")
+            settingsForm
+        }
+        .onAppear { model.refreshDevices() }
+    }
+
+    private var settingsForm: some View {
         Form {
             Section("Correction GPT") {
                 LabeledContent {
@@ -475,8 +616,6 @@ struct SettingsPane: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle("Réglages")
-        .onAppear { model.refreshDevices() }
     }
 }
 

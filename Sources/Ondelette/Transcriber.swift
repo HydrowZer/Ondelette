@@ -61,16 +61,29 @@ actor Transcriber {
     /// `languageCode` : code ISO ("fr", "en", …) ou nil pour la détection automatique.
     /// Whisper force réellement la langue ; Parakeet ne peut que filtrer par alphabet.
     /// Normalise le gain : un chuchotement est 10-30× plus faible qu'une voix
-    /// normale et ressort quasi muet du micro — on ramène le pic vers un niveau
-    /// nominal avant de donner l'audio au modèle. Gain plafonné pour ne pas
-    /// transformer du silence pur en bruit amplifié.
+    /// normale et ressort quasi muet du micro — on le ramène vers un niveau
+    /// nominal avant de donner l'audio au modèle.
+    ///
+    /// Référence = 99ᵉ centile des amplitudes, PAS le pic absolu : le clic de la
+    /// touche qui démarre la dictée (ou un pop) domine souvent le pic et
+    /// empêcherait toute amplification de la voix chuchotée derrière.
+    /// Gain plafonné pour ne pas transformer du silence pur en bruit amplifié.
     private func normalized(_ samples: [Float]) -> [Float] {
-        var peak: Float = 0
-        vDSP_maxmgv(samples, 1, &peak, vDSP_Length(samples.count))
-        guard peak > 0.001, peak < 0.5 else { return samples }
-        var gain = min(0.85 / peak, 30)
+        guard samples.count > 1600 else { return samples }
+        var magnitudes = [Float](repeating: 0, count: samples.count)
+        vDSP_vabs(samples, 1, &magnitudes, 1, vDSP_Length(samples.count))
+        vDSP_vsort(&magnitudes, vDSP_Length(magnitudes.count), 1)
+        let reference = magnitudes[Int(Double(magnitudes.count) * 0.99)]
+
+        guard reference > 0.0005, reference < 0.5 else { return samples }
+        var gain = min(0.85 / reference, 40)
+        NSLog("Ondelette audio: référence %.4f, gain ×%.1f", reference, gain)
         var result = [Float](repeating: 0, count: samples.count)
         vDSP_vsmul(samples, 1, &gain, &result, 1, vDSP_Length(samples.count))
+        // Écrête les rares échantillons (clics) poussés au-delà de ±1.
+        var minValue: Float = -1
+        var maxValue: Float = 1
+        vDSP_vclip(result, 1, &minValue, &maxValue, &result, 1, vDSP_Length(result.count))
         return result
     }
 

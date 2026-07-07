@@ -98,6 +98,28 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(muteWhileRecording, forKey: "muteWhileRecording") }
     }
 
+    /// Adapte le style de correction à l'app active (mail, messagerie, code…).
+    @Published var adaptToApp: Bool {
+        didSet { defaults.set(adaptToApp, forKey: "adaptToApp") }
+    }
+
+    /// Modes contextuels désactivés individuellement (rawValues d'AppContext).
+    @Published var disabledContexts: Set<String> {
+        didSet { defaults.set(Array(disabledContexts), forKey: "disabledContexts") }
+    }
+
+    func isContextEnabled(_ context: AppContext) -> Bool {
+        adaptToApp && !disabledContexts.contains(context.rawValue)
+    }
+
+    func setContext(_ context: AppContext, enabled: Bool) {
+        if enabled {
+            disabledContexts.remove(context.rawValue)
+        } else {
+            disabledContexts.insert(context.rawValue)
+        }
+    }
+
     /// Vocabulaire personnalisé (un terme par ligne ou séparés par des virgules) :
     /// prénoms, marques, jargon que le micro écorche.
     @Published var customVocabulary: String {
@@ -143,6 +165,8 @@ final class AppSettings: ObservableObject {
         hotkey = HotkeyChoice(rawValue: defaults.string(forKey: "hotkey") ?? "") ?? .rightOption
         playSounds = defaults.object(forKey: "playSounds") as? Bool ?? true
         muteWhileRecording = defaults.object(forKey: "muteWhileRecording") as? Bool ?? true
+        adaptToApp = defaults.object(forKey: "adaptToApp") as? Bool ?? true
+        disabledContexts = Set(defaults.stringArray(forKey: "disabledContexts") ?? [])
         customVocabulary = defaults.string(forKey: "customVocabulary") ?? ""
         languageCode = defaults.string(forKey: "languageCode") ?? "fr"
         micUID = defaults.string(forKey: "micUID") ?? ""

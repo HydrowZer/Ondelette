@@ -5,6 +5,14 @@ struct DictationEntry: Codable, Identifiable, Equatable {
     let date: Date
     let raw: String
     let final: String
+    /// Durée de l'enregistrement en secondes (absente sur les anciennes entrées).
+    let duration: TimeInterval?
+    /// App dans laquelle le texte a été collé.
+    let app: String?
+
+    var wordCount: Int {
+        final.split(whereSeparator: \.isWhitespace).count
+    }
 }
 
 /// Historique des dictées, persistant (JSON dans Application Support).
@@ -25,8 +33,12 @@ final class HistoryStore: ObservableObject {
         load()
     }
 
-    func add(raw: String, final: String) {
-        entries.insert(DictationEntry(id: UUID(), date: Date(), raw: raw, final: final), at: 0)
+    func add(raw: String, final: String, duration: TimeInterval? = nil, app: String? = nil) {
+        entries.insert(
+            DictationEntry(
+                id: UUID(), date: Date(), raw: raw, final: final,
+                duration: duration, app: app),
+            at: 0)
         if entries.count > 200 {
             entries.removeLast(entries.count - 200)
         }
@@ -48,14 +60,68 @@ final class HistoryStore: ObservableObject {
     var totalCount: Int { entries.count }
 
     var totalWords: Int {
-        entries.reduce(0) { $0 + $1.final.split(whereSeparator: \.isWhitespace).count }
+        entries.reduce(0) { $0 + $1.wordCount }
     }
 
     var todayWords: Int {
         let calendar = Calendar.current
         return entries
             .filter { calendar.isDateInToday($0.date) }
-            .reduce(0) { $0 + $1.final.split(whereSeparator: \.isWhitespace).count }
+            .reduce(0) { $0 + $1.wordCount }
+    }
+
+    /// Vitesse de frappe moyenne au clavier, base de l'estimation du temps gagné.
+    static let typingWPM = 40.0
+
+    private var timedEntries: [DictationEntry] {
+        entries.filter { ($0.duration ?? 0) > 1 }
+    }
+
+    /// Vitesse de dictée réelle (mots par minute), sur les entrées horodatées.
+    var wordsPerMinute: Int {
+        let timed = timedEntries
+        let seconds = timed.reduce(0.0) { $0 + ($1.duration ?? 0) }
+        guard seconds > 15 else { return 0 }
+        let words = timed.reduce(0) { $0 + $1.wordCount }
+        return Int((Double(words) / seconds * 60).rounded())
+    }
+
+    /// Multiplicateur de vitesse vs frappe au clavier (~40 mots/min).
+    var speedMultiplier: Double {
+        guard wordsPerMinute > 0 else { return 0 }
+        return Double(wordsPerMinute) / Self.typingWPM
+    }
+
+    /// Temps gagné estimé vs taper au clavier, en secondes.
+    var timeSavedSeconds: TimeInterval {
+        let timed = timedEntries
+        let dictated = timed.reduce(0.0) { $0 + ($1.duration ?? 0) }
+        let words = timed.reduce(0) { $0 + $1.wordCount }
+        let typingTime = Double(words) / Self.typingWPM * 60
+        return max(0, typingTime - dictated)
+    }
+
+    /// Jours consécutifs avec au moins une dictée (série se terminant
+    /// aujourd'hui, ou hier si la journée ne fait que commencer).
+    var streakDays: Int {
+        let calendar = Calendar.current
+        let activeDays = Set(entries.map { calendar.startOfDay(for: $0.date) })
+        guard !activeDays.isEmpty else { return 0 }
+
+        var day = calendar.startOfDay(for: Date())
+        if !activeDays.contains(day) {
+            guard let yesterday = calendar.date(byAdding: .day, value: -1, to: day),
+                  activeDays.contains(yesterday)
+            else { return 0 }
+            day = yesterday
+        }
+        var streak = 0
+        while activeDays.contains(day) {
+            streak += 1
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: day) else { break }
+            day = previous
+        }
+        return streak
     }
 
     // MARK: - Persistance

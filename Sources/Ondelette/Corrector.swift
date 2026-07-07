@@ -21,7 +21,8 @@ struct Corrector {
     static func systemPrompt(
         for style: CorrectionStyle,
         targetLanguage: String?,
-        vocabulary: [String]
+        vocabulary: [String],
+        context: AppContext
     ) -> String {
         var base = """
         Tu es le moteur de correction d'une application de dictée vocale. \
@@ -52,6 +53,9 @@ struct Corrector {
             utilise la graphie exacte de la liste ; ne « corrige » jamais ces termes.
             """
         }
+        if let addendum = context.promptAddendum {
+            base += addendum
+        }
         switch style {
         case .light:
             return base + """
@@ -76,7 +80,8 @@ struct Corrector {
         _ text: String,
         style: CorrectionStyle,
         model: String,
-        targetLanguage: String?
+        targetLanguage: String?,
+        context: AppContext = .standard
     ) async throws -> String {
         guard let apiKey = KeychainHelper.loadAPIKey(), !apiKey.isEmpty else {
             throw CorrectorError.missingKey
@@ -85,12 +90,12 @@ struct Corrector {
         do {
             return try await request(
                 text, style: style, model: model, targetLanguage: targetLanguage,
-                vocabulary: vocabulary, apiKey: apiKey, reasoningEffort: "none")
+                vocabulary: vocabulary, context: context, apiKey: apiKey, reasoningEffort: "none")
         } catch let CorrectorError.badResponse(detail)
             where detail.lowercased().contains("reasoning") || detail.lowercased().contains("unsupported") {
             return try await request(
                 text, style: style, model: model, targetLanguage: targetLanguage,
-                vocabulary: vocabulary, apiKey: apiKey, reasoningEffort: nil)
+                vocabulary: vocabulary, context: context, apiKey: apiKey, reasoningEffort: nil)
         }
     }
 
@@ -100,6 +105,7 @@ struct Corrector {
         model: String,
         targetLanguage: String?,
         vocabulary: [String],
+        context: AppContext,
         apiKey: String,
         reasoningEffort: String?
     ) async throws -> String {
@@ -109,7 +115,8 @@ struct Corrector {
                 [
                     "role": "system",
                     "content": systemPrompt(
-                        for: style, targetLanguage: targetLanguage, vocabulary: vocabulary),
+                        for: style, targetLanguage: targetLanguage,
+                        vocabulary: vocabulary, context: context),
                 ],
                 ["role": "user", "content": text],
             ],

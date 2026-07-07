@@ -24,6 +24,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var isBusy = false
     private var recordingStart: Date?
+    /// App frontale au moment où la dictée démarre (celle qui recevra le texte).
+    private var dictationTarget = DictationTarget(appName: nil, context: .standard)
     private var readyEngines: Set<TranscriptionEngine> = []
     private var cancellables = Set<AnyCancellable>()
 
@@ -181,6 +183,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         do {
             try recorder.start()
             recordingStart = Date()
+            dictationTarget = DictationTarget.current()
             hotkey.recordingActive = true
             setIcon(recording: true)
             hud.show(.recording)
@@ -230,6 +233,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         Task {
             defer { isBusy = false }
+            let recordedSeconds = Double(samples.count) / 16000.0
             do {
                 let code = AppSettings.shared.languageCode
                 let engine = AppSettings.shared.engine
@@ -259,9 +263,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
 
                 let style = AppSettings.shared.correctionStyle
+                let context = AppSettings.shared.isContextEnabled(dictationTarget.context)
+                    ? dictationTarget.context : .standard
                 var final = raw
                 if style != .off {
-                    hud.show(.correcting)
+                    hud.show(.correcting(context.shortLabel))
                     let targetLanguage = AppSettings.languageOptions
                         .first { $0.code == code && code != "auto" }?.label
                     do {
@@ -269,20 +275,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                             raw,
                             style: style,
                             model: AppSettings.shared.gptModel,
-                            targetLanguage: targetLanguage
+                            targetLanguage: targetLanguage,
+                            context: context
                         )
                     } catch {
                         // La dictée ne doit jamais être perdue : on colle le brut.
                         NSLog("Correction échouée : \(error.localizedDescription)")
                         hud.show(.error("Correction échouée — texte brut collé"))
                         Paster.paste(raw)
-                        HistoryStore.shared.add(raw: raw, final: raw)
+                        HistoryStore.shared.add(
+                            raw: raw, final: raw,
+                            duration: recordedSeconds, app: dictationTarget.appName)
                         return
                     }
                 }
 
                 Paster.paste(final)
-                HistoryStore.shared.add(raw: raw, final: final)
+                HistoryStore.shared.add(
+                    raw: raw, final: final,
+                    duration: recordedSeconds, app: dictationTarget.appName)
                 hud.show(.done)
             } catch {
                 hud.show(.error(error.localizedDescription))
