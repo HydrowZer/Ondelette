@@ -1,0 +1,15 @@
+# Compilation Swift Package Manager
+.build/
+build/
+.swiftpm/
+
+# Xcode
+DerivedData/
+*.xcodeproj
+xcuserdata/
+
+# macOS
+.DS_Store
+
+# Assets intermédiaires
+Resources/AppIcon.iconset/
