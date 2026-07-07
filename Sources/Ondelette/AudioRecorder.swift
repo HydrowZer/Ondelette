@@ -7,7 +7,7 @@ import Foundation
 /// 16 kHz (format attendu par Whisper et Parakeet).
 final class AudioRecorder: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate {
     private var session: AVCaptureSession?
-    private let captureQueue = DispatchQueue(label: "com.charles.parler.audio")
+    private let captureQueue = DispatchQueue(label: "com.charles.ondelette.audio")
     private var converter: AVAudioConverter?
     private var lastInputFormat: AVAudioFormat?
     private let outFormat = AVAudioFormat(
@@ -33,17 +33,17 @@ final class AudioRecorder: NSObject, AVCaptureAudioDataOutputSampleBufferDelegat
         lastInputFormat = nil
 
         guard let device = resolveDevice() else {
-            throw NSError(domain: "Parler", code: 1, userInfo: [
+            throw NSError(domain: "Ondelette", code: 1, userInfo: [
                 NSLocalizedDescriptionKey: "Aucun micro disponible."
             ])
         }
-        NSLog("Parler audio: capture sur « %@ »", device.localizedName)
+        NSLog("Ondelette audio: capture sur « %@ »", device.localizedName)
 
         let session = AVCaptureSession()
         session.beginConfiguration()
         let input = try AVCaptureDeviceInput(device: device)
         guard session.canAddInput(input) else {
-            throw NSError(domain: "Parler", code: 3, userInfo: [
+            throw NSError(domain: "Ondelette", code: 3, userInfo: [
                 NSLocalizedDescriptionKey: "Micro « \(device.localizedName) » indisponible."
             ])
         }
@@ -51,7 +51,7 @@ final class AudioRecorder: NSObject, AVCaptureAudioDataOutputSampleBufferDelegat
         let output = AVCaptureAudioDataOutput()
         output.setSampleBufferDelegate(self, queue: captureQueue)
         guard session.canAddOutput(output) else {
-            throw NSError(domain: "Parler", code: 4, userInfo: [
+            throw NSError(domain: "Ondelette", code: 4, userInfo: [
                 NSLocalizedDescriptionKey: "Sortie audio indisponible."
             ])
         }
@@ -96,7 +96,7 @@ final class AudioRecorder: NSObject, AVCaptureAudioDataOutputSampleBufferDelegat
            AudioDevices.isBluetooth(coreAudioID),
            let builtIn = AudioDevices.builtInInputDevice(),
            let builtInCapture = AVCaptureDevice(uniqueID: builtIn.uid) {
-            NSLog("Parler audio: micro système Bluetooth évité au profit du micro intégré")
+            NSLog("Ondelette audio: micro système Bluetooth évité au profit du micro intégré")
             return builtInCapture
         }
         return systemDefault

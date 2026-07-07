@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "Parler",
+    name: "Ondelette",
     platforms: [.macOS("26.0")],
     dependencies: [
         .package(url: "https://github.com/FluidInference/FluidAudio.git", from: "0.12.4"),
@@ -10,12 +10,12 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "Parler",
+            name: "Ondelette",
             dependencies: [
                 .product(name: "FluidAudio", package: "FluidAudio"),
                 .product(name: "WhisperKit", package: "WhisperKit"),
             ],
-            path: "Sources/Parler"
+            path: "Sources/Ondelette"
         )
     ]
 )

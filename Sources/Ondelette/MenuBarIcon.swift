@@ -1,6 +1,6 @@
 import AppKit
 
-/// Glyphe de barre de menus : la signature vocale de Parler (même onde
+/// Glyphe de barre de menus : la signature vocale d'Ondelette (même onde
 /// calligraphique que l'icône de l'app), dessinée en vectoriel.
 /// Template par défaut (s'adapte au thème), rouge pendant l'enregistrement.
 enum MenuBarIcon {

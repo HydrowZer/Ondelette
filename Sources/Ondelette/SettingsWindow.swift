@@ -46,7 +46,7 @@ final class SettingsWindowController {
             let view = MainView(nav: nav)
             let hosting = NSHostingController(rootView: view)
             let window = NSWindow(contentViewController: hosting)
-            window.title = "Parler"
+            window.title = "Ondelette"
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
             window.titlebarAppearsTransparent = true
             window.titleVisibility = .hidden
@@ -83,7 +83,7 @@ struct MainView: View {
                         .resizable()
                         .frame(width: 46, height: 46)
                     VStack(alignment: .leading, spacing: 0) {
-                        Text("Parler")
+                        Text("Ondelette")
                             .font(.system(size: 20, weight: .bold))
                         Text("Dictée vocale")
                             .font(.caption)

@@ -75,18 +75,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusMenuItem.isEnabled = false
         menu.addItem(statusMenuItem)
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Ouvrir Parler", action: #selector(openMain), keyEquivalent: "o"))
+        menu.addItem(NSMenuItem(title: "Ouvrir Ondelette", action: #selector(openMain), keyEquivalent: "o"))
         menu.addItem(NSMenuItem(title: "Historique", action: #selector(openHistory), keyEquivalent: "h"))
         menu.addItem(NSMenuItem(title: "Réglages…", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(NSMenuItem(title: "Autorisations système…", action: #selector(openPrivacySettings), keyEquivalent: ""))
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quitter Parler", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "Quitter Ondelette", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         statusItem.menu = menu
     }
 
     private func setIcon(recording: Bool) {
         statusItem.button?.image = MenuBarIcon.make(recording: recording)
-        statusItem.button?.toolTip = "Parler"
+        statusItem.button?.toolTip = "Ondelette"
     }
 
     private func updateStatus(_ text: String) {
@@ -245,7 +245,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                     group.addTask {
                         try await Task.sleep(nanoseconds: 120_000_000_000)
-                        throw NSError(domain: "Parler", code: 10, userInfo: [
+                        throw NSError(domain: "Ondelette", code: 10, userInfo: [
                             NSLocalizedDescriptionKey: "Transcription trop longue (2 min) — réessaie."
                         ])
                     }

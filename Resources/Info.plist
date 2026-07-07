@@ -5,15 +5,15 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>fr</string>
 	<key>CFBundleExecutable</key>
-	<string>Parler</string>
+	<string>Ondelette</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.charles.parler</string>
+	<string>com.charles.ondelette</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Parler</string>
+	<string>Ondelette</string>
 	<key>CFBundleDisplayName</key>
-	<string>Parler</string>
+	<string>Ondelette</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundlePackageType</key>
@@ -27,7 +27,7 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Parler a besoin du micro pour transcrire ta voix en texte.</string>
+	<string>Ondelette a besoin du micro pour transcrire ta voix en texte.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 </dict>
