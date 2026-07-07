@@ -1,7 +1,7 @@
 # Ondelette 🌊
 
+> Une *ondelette* est une petite onde localisée — le terme d'analyse du signal qui a donné son logo à l'app. (Anciennement « Parler ».)
 
-> Anciennement « Parler ». Une *ondelette* est une petite onde localisée — le terme d'analyse du signal qui a donné son logo à l'app.
 Dictée vocale native pour macOS, dans l'esprit de [Wispr Flow](https://wisprflow.ai) : tu maintiens une touche, tu parles, le texte corrigé est collé dans l'app active.
 
 - **Transcription 100 % locale** — Whisper large-v3-turbo (WhisperKit, CoreML, langue forcée) par défaut, Parakeet V3 (FluidAudio) en option ultra-rapide. Aucun audio n'est envoyé en ligne.
